@@ -44,7 +44,7 @@
     <header>
       <div>
         <h1>Legge dell'Inevitabilità — Simulatore (Economia & Finanza)</h1>
-        <div class="sub">Di David Hand: eventi rarissimi diventano inevitabili quando aumentano le opportunità. Gioca con i parametri e guarda cosa succede.</div>
+        <div class="sub">Questo simulatore mostra perché eventi rari come crisi, frodi o default diventano inevitabili se osserviamo abbastanza aziende, mercati o tempo. Imposta i parametri e guarda come la probabilità cresce.</div>
       </div>
       <div class="sub">HTML + JS, responsive, stand‑alone</div>
     </header>
@@ -53,24 +53,24 @@
       <!-- Controls -->
       <section class="card controls">
         <div class="row full">
-          <label for="scenario">Scenario</label>
+          <label for="scenario">Scenario (scegli un esempio preimpostato)</label>
           <div class="presets" id="presets"></div>
         </div>
 
         <div class="row">
-          <label for="p">Probabilità per entità per periodo (%)</label>
+          <label for="p">Probabilità per entità per periodo (%)<br><small>es: rischio di default di una banca in un anno</small></label>
           <input id="p" type="number" min="0" max="100" step="0.0001" value="0.10"/>
         </div>
         <div class="row">
-          <label for="entities">Numero di entità (aziende/fondi/banche)</label>
+          <label for="entities">Numero di entità<br><small>aziende, banche, fondi osservati</small></label>
           <input id="entities" type="number" min="1" step="1" value="1000"/>
         </div>
         <div class="row">
-          <label for="periods">Numero di periodi (anni/mesi/giorni osservati)</label>
+          <label for="periods">Numero di periodi<br><small>anni, mesi o giorni di osservazione</small></label>
           <input id="periods" type="number" min="1" step="1" value="10"/>
         </div>
         <div class="row">
-          <label for="trials">Simulazioni Monte Carlo</label>
+          <label for="trials">Simulazioni Monte Carlo<br><small>più simulazioni = risultato più preciso</small></label>
           <input id="trials" type="number" min="100" step="100" value="5000"/>
         </div>
         <div class="btns">
@@ -88,7 +88,7 @@
           <div class="kpi"><div class="label">Eventi attesi (N·T·p)</div><div class="value" id="expectedCount">—</div></div>
           <div class="kpi"><div class="label">95º percentile # eventi</div><div class="value" id="p95">—</div></div>
         </div>
-        <div class="note">Con tanti attori (<span id="nLabel">—</span>) e opportunità (<span id="tLabel">—</span>) anche un p minuscolo rende l’evento praticamente certo: è la “inevitabilità”.</div>
+        <div class="note">Con tanti attori (<span id="nLabel">—</span>) e opportunità (<span id="tLabel">—</span>), anche una probabilità minuscola rende l’evento praticamente certo: è la “inevitabilità”.</div>
         <div style="margin-top:12px">
           <canvas id="chart" height="220"></canvas>
         </div>
@@ -99,7 +99,9 @@
     <section class="card" style="margin-top:16px;padding:18px">
       <details>
         <summary><strong>Come leggere i risultati</strong></summary>
-        <p>La <em>probabilità analitica</em> usa la formula esatta con indipendenza. La <em>simulazione Monte Carlo</em> esegue molti scenari casuali e conta quante volte si verifica almeno un evento raro. Se i due numeri sono simili, il modello è coerente. Al crescere di N·T, anche con p piccolissima, P(≥1) tende rapidamente a 1 — ed è questo il senso della legge dell’inevitabilità di Hand.</p>
+        <p>La <em>probabilità analitica</em> si calcola con la formula esatta assumendo indipendenza tra eventi. La <em>simulazione Monte Carlo</em> crea migliaia di scenari casuali e conta quante volte si verifica almeno un evento raro.</p>
+        <p><strong>Esempio concreto:</strong> se la probabilità di default di una banca è 0,1% l’anno, con 1000 banche per 10 anni il modello mostra che è quasi certo che almeno una fallisca. Questo illustra perfettamente la legge dell’inevitabilità di Hand.</p>
+        <p>Al crescere di N (numero entità) e T (periodi), anche con p piccolissima, la probabilità P(≥1) tende rapidamente a 1.</p>
       </details>
     </section>
   </div>
@@ -146,7 +148,6 @@
       const counts = new Array(M)
       for(let m=0; m<M; m++){
         let c = 0
-        // Fast binomial sampling by direct Bernoulli trials; keep M*draws reasonable
         for(let i=0; i<draws; i++) if(Math.random() < p) c++
         counts[m] = c
         if(c>0) anyCount++
@@ -156,7 +157,6 @@
       return {simProb: anyCount/M, p95}
     }
 
-    // Simple bars on canvas
     function drawChart(anal, sim){
       const c = $('chart')
       const ctx = c.getContext('2d')
@@ -166,11 +166,9 @@
       ctx.clearRect(0,0,w,h)
       const pad = 18
       const maxV = 1
-      // axes
       ctx.globalAlpha = 0.7
       ctx.strokeStyle = 'rgba(255,255,255,0.25)'
       ctx.beginPath(); ctx.moveTo(pad, h/devicePixelRatio - pad); ctx.lineTo(w/devicePixelRatio - pad, h/devicePixelRatio - pad); ctx.stroke()
-      // bars
       const values = [anal, sim]
       const labels = ['Analitica','Simulata']
       const colors = ['#7aa2ff','#58d0a6']
@@ -232,7 +230,6 @@
     $('run').addEventListener('click', run)
     $('reset').addEventListener('click', reset)
 
-    // Initial draw
     drawChart(0,0)
   </script>
 </body>
