@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Legge dell'Inevitabilità — Simulatore Finanza</title>
+  <style>
+    :root{--bg:#0b1020;--card:#111734;--muted:#98a2b3;--text:#ecf2ff;--accent:#7aa2ff;--accent2:#58d0a6;--warn:#f59e0b;--danger:#ef4444}
+    *{box-sizing:border-box}html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial,'Noto Sans',sans-serif;background:radial-gradient(1200px 600px at 20% -10%,#18204a 0%,#0b1020 60%),var(--bg);color:var(--text)}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    h1{font-size:clamp(22px,3vw,32px);margin:0;letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:14px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02));border:1px solid rgba(255,255,255,.08);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1.2fr 1fr}}
+    .controls{padding:18px}
+    .row{display:grid;grid-template-columns:1fr 140px;gap:10px;align-items:center;margin:10px 0}
+    .row.full{grid-template-columns:1fr}
+    label{font-size:14px;color:var(--muted)}
+    input[type="number"],input[type="range"],select{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0f1530;color:var(--text);outline:none}
+    input[type="range"]{accent-color:var(--accent)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+    button{padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:#0f1530;color:var(--text);cursor:pointer}
+    button.primary{background:linear-gradient(90deg,var(--accent),#9be3ff);color:#0b1020;border:none;font-weight:600}
+    button.ghost{background:transparent}
+    .results{padding:18px}
+    .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    @media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr)}}
+    .kpi{padding:14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px dashed rgba(255,255,255,.12)}
+    .kpi .label{color:var(--muted);font-size:12px}
+    .kpi .value{font-size:22px;font-weight:700;margin-top:6px}
+    .note{font-size:12px;color:var(--muted);margin-top:8px}
+    canvas{width:100%;height:220px;background:rgba(255,255,255,.03);border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+    .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .badge{font-size:12px;padding:8px 10px;border-radius:999px;background:rgba(122,162,255,.1);border:1px solid rgba(122,162,255,.4);color:#cfe0ff;cursor:pointer}
+    .footer{margin-top:14px;color:var(--muted);font-size:12px}
+    .inline{display:inline-block}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Legge dell'Inevitabilità — Simulatore (Economia & Finanza)</h1>
+        <div class="sub">Di David Hand: eventi rarissimi diventano inevitabili quando aumentano le opportunità. Gioca con i parametri e guarda cosa succede.</div>
+      </div>
+      <div class="sub">HTML + JS, responsive, stand‑alone</div>
+    </header>
+
+    <div class="grid">
+      <!-- Controls -->
+      <section class="card controls">
+        <div class="row full">
+          <label for="scenario">Scenario</label>
+          <div class="presets" id="presets"></div>
+        </div>
+
+        <div class="row">
+          <label for="p">Probabilità per entità per periodo (%)</label>
+          <input id="p" type="number" min="0" max="100" step="0.0001" value="0.10"/>
+        </div>
+        <div class="row">
+          <label for="entities">Numero di entità (aziende/fondi/banche)</label>
+          <input id="entities" type="number" min="1" step="1" value="1000"/>
+        </div>
+        <div class="row">
+          <label for="periods">Numero di periodi (anni/mesi/giorni osservati)</label>
+          <input id="periods" type="number" min="1" step="1" value="10"/>
+        </div>
+        <div class="row">
+          <label for="trials">Simulazioni Monte Carlo</label>
+          <input id="trials" type="number" min="100" step="100" value="5000"/>
+        </div>
+        <div class="btns">
+          <button class="primary" id="run">Esegui simulazione</button>
+          <button class="ghost" id="reset">Reset</button>
+        </div>
+        <div class="note">Assunzione: indipendenza tra entità e periodi. Formula analitica: <span class="inline">P(≥1 evento) = 1 − (1 − p)<sup>N·T</sup></span>.</div>
+      </section>
+
+      <!-- Results -->
+      <section class="card results">
+        <div class="kpis">
+          <div class="kpi"><div class="label">Probabilità analitica di ≥1 evento</div><div class="value" id="analyticProb">—</div></div>
+          <div class="kpi"><div class="label">Probabilità simulata di ≥1 evento</div><div class="value" id="simProb">—</div></div>
+          <div class="kpi"><div class="label">Eventi attesi (N·T·p)</div><div class="value" id="expectedCount">—</div></div>
+          <div class="kpi"><div class="label">95º percentile # eventi</div><div class="value" id="p95">—</div></div>
+        </div>
+        <div class="note">Con tanti attori (<span id="nLabel">—</span>) e opportunità (<span id="tLabel">—</span>) anche un p minuscolo rende l’evento praticamente certo: è la “inevitabilità”.</div>
+        <div style="margin-top:12px">
+          <canvas id="chart" height="220"></canvas>
+        </div>
+        <div class="footer">Suggerimenti: prova p=0,01% con 10.000 entità per 10 anni (frodi rare); oppure p=0,2% con 2.000 titoli per 5 anni (default aziendali); oppure p=0,005% al giorno con 500 giorni e 3.000 titoli (crolli giornalieri estremi).</div>
+      </section>
+    </div>
+
+    <section class="card" style="margin-top:16px;padding:18px">
+      <details>
+        <summary><strong>Come leggere i risultati</strong></summary>
+        <p>La <em>probabilità analitica</em> usa la formula esatta con indipendenza. La <em>simulazione Monte Carlo</em> esegue molti scenari casuali e conta quante volte si verifica almeno un evento raro. Se i due numeri sono simili, il modello è coerente. Al crescere di N·T, anche con p piccolissima, P(≥1) tende rapidamente a 1 — ed è questo il senso della legge dell’inevitabilità di Hand.</p>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id)
+
+    const presets = [
+      {label:'Crollo giornaliero estremo', p:0.005, entities:3000, periods:500, note:'p per titolo per giorno'},
+      {label:'Default aziendali annui', p:0.2, entities:2000, periods:5, note:'p per azienda per anno'},
+      {label:'Frodi su fondi (annue)', p:0.01, entities:10000, periods:10, note:'p per fondo per anno'},
+      {label:'Shock su startup (annue)', p:0.5, entities:20000, periods:5, note:'p per startup per anno'},
+    ]
+
+    const presetsBox = $('presets')
+    presets.forEach((pr, idx)=>{
+      const b = document.createElement('button')
+      b.className = 'badge'
+      b.textContent = pr.label
+      b.title = pr.note
+      b.addEventListener('click', ()=>{
+        $('p').value = pr.p
+        $('entities').value = pr.entities
+        $('periods').value = pr.periods
+      })
+      presetsBox.appendChild(b)
+    })
+
+    function fmtPct(x){ if(isNaN(x)) return '—'; return (x*100).toFixed(2)+'%' }
+    function fmtNum(x){ if(isNaN(x)) return '—'; return new Intl.NumberFormat('it-IT').format(x) }
+
+    function computeAnalytic(pPct, N, T){
+      const p = Math.max(0, Math.min(1, pPct/100))
+      const trials = N*T
+      const analyticProb = 1 - Math.pow(1 - p, trials)
+      const expected = trials * p
+      return {analyticProb, expected}
+    }
+
+    function simulate(pPct, N, T, M){
+      const p = Math.max(0, Math.min(1, pPct/100))
+      const draws = N*T
+      let anyCount = 0
+      const counts = new Array(M)
+      for(let m=0; m<M; m++){
+        let c = 0
+        // Fast binomial sampling by direct Bernoulli trials; keep M*draws reasonable
+        for(let i=0; i<draws; i++) if(Math.random() < p) c++
+        counts[m] = c
+        if(c>0) anyCount++
+      }
+      counts.sort((a,b)=>a-b)
+      const p95 = counts[Math.floor(0.95*(M-1))]
+      return {simProb: anyCount/M, p95}
+    }
+
+    // Simple bars on canvas
+    function drawChart(anal, sim){
+      const c = $('chart')
+      const ctx = c.getContext('2d')
+      const w = c.width = c.clientWidth * devicePixelRatio
+      const h = c.height = c.clientHeight * devicePixelRatio
+      ctx.scale(devicePixelRatio, devicePixelRatio)
+      ctx.clearRect(0,0,w,h)
+      const pad = 18
+      const maxV = 1
+      // axes
+      ctx.globalAlpha = 0.7
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)'
+      ctx.beginPath(); ctx.moveTo(pad, h/devicePixelRatio - pad); ctx.lineTo(w/devicePixelRatio - pad, h/devicePixelRatio - pad); ctx.stroke()
+      // bars
+      const values = [anal, sim]
+      const labels = ['Analitica','Simulata']
+      const colors = ['#7aa2ff','#58d0a6']
+      const cw = (w/devicePixelRatio - pad*2)
+      const bw = Math.min(120, cw/5)
+      const gap = bw
+      const base = h/devicePixelRatio - pad
+      for(let i=0;i<2;i++){
+        const x = pad + i*(bw+gap) + (cw - (2*bw + gap))/2
+        const barH = Math.max(2, (values[i]/maxV) * (h/devicePixelRatio - pad*2))
+        ctx.fillStyle = colors[i]
+        ctx.globalAlpha = 0.9
+        ctx.fillRect(x, base - barH, bw, barH)
+        ctx.globalAlpha = 1
+        ctx.fillStyle = 'rgba(236,242,255,0.9)'
+        ctx.font = '12px system-ui'
+        ctx.textAlign = 'center'
+        ctx.fillText(labels[i], x + bw/2, base + 14)
+        ctx.fillText((values[i]*100).toFixed(2)+'%', x + bw/2, base - barH - 6)
+      }
+    }
+
+    function run(){
+      const p = parseFloat($('p').value)
+      const N = Math.max(1, Math.floor(parseFloat($('entities').value)))
+      const T = Math.max(1, Math.floor(parseFloat($('periods').value)))
+      const M = Math.max(100, Math.floor(parseFloat($('trials').value)))
+      const {analyticProb, expected} = computeAnalytic(p, N, T)
+      const {simProb, p95} = simulate(p, N, T, M)
+      $('analyticProb').textContent = fmtPct(analyticProb)
+      $('simProb').textContent = fmtPct(simProb)
+      $('expectedCount').textContent = fmtNum(expected.toFixed(2))
+      $('p95').textContent = fmtNum(p95)
+      $('nLabel').textContent = fmtNum(N)
+      $('tLabel').textContent = fmtNum(T)
+      drawChart(analyticProb, simProb)
+    }
+
+    function reset(){
+      $('p').value = 0.10
+      $('entities').value = 1000
+      $('periods').value = 10
+      $('trials').value = 5000
+      $('analyticProb').textContent = '—'
+      $('simProb').textContent = '—'
+      $('expectedCount').textContent = '—'
+      $('p95').textContent = '—'
+      $('nLabel').textContent = '—'
+      $('tLabel').textContent = '—'
+      drawChart(0,0)
+    }
+
+    window.addEventListener('resize', ()=>{
+      const a = $('analyticProb').textContent.endsWith('%') ? parseFloat($('analyticProb').textContent)/100 : 0
+      const s = $('simProb').textContent.endsWith('%') ? parseFloat($('simProb').textContent)/100 : 0
+      drawChart(a,s)
+    })
+
+    $('run').addEventListener('click', run)
+    $('reset').addEventListener('click', reset)
+
+    // Initial draw
+    drawChart(0,0)
+  </script>
+</body>
+</html>
